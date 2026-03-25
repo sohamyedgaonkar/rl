@@ -4,6 +4,9 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+import os
+os.environ['BEARTYPE_CLAW'] = 'false'
+
 """
 FastAPI application for the My Env Environment.
 
@@ -31,7 +34,7 @@ Usage:
 
 from openenv.core.env_server import create_fastapi_app
 from .my_env_environment import WordGameEnvironment
-from my_env.models import WordGameAction, WordGameObservation, WordGameState
+from .models import WordGameAction, WordGameObservation, WordGameState
 
 app = create_fastapi_app(WordGameEnvironment,WordGameAction, WordGameObservation)
 

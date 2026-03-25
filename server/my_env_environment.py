@@ -1,7 +1,7 @@
 import random
 import uuid
 from openenv.core.env_server import Environment
-from models import WordGameAction, WordGameObservation, WordGameState
+from .models import WordGameAction, WordGameObservation, WordGameState
 
 WORDS = ["python", "neural", "tensor", "matrix", "vector",
          "kernel", "lambda", "signal", "binary", "cipher"]
@@ -9,7 +9,7 @@ WORDS = ["python", "neural", "tensor", "matrix", "vector",
 class WordGameEnvironment(Environment):
     SUPPORTS_CONCURRENT_SESSIONS = True  # Allow multiple simultaneous clients
 
-    MAX_ATTEMPTS = 10
+    MAX_ATTEMPTS = 1000
 
     def __init__(self):
         self._state = WordGameState()

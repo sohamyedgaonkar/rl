@@ -1,6 +1,6 @@
 from openenv.core.env_client import EnvClient
 from openenv.core.client_types import StepResult
-from .models import WordGameAction, WordGameObservation, WordGameState
+from .server.models import WordGameAction, WordGameObservation, WordGameState
 
 class WordGameEnv(EnvClient[WordGameAction, WordGameObservation, WordGameState]):
     def _step_payload(self, action: WordGameAction) -> dict:
