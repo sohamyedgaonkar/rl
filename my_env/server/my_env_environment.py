@@ -41,15 +41,15 @@ class ProteinFoldingEnvironment(Environment):
     TASKS: dict[str, TaskConfig] = {
         "task_1": TaskConfig(
             task_id="task_1",
-            protein_length=8,
+            protein_length=15,
             goal="reduce energy by 30%",
-            folding_ratio=0.70,
+            folding_ratio=0.85,
         ),
         "task_2": TaskConfig(
             task_id="task_2",
-            protein_length=12,
+            protein_length=15,
             goal="form hydrophobic core",
-            folding_ratio=0.62,
+            folding_ratio=0.85,
         ),
         "task_3": TaskConfig(
             task_id="task_3",
@@ -425,10 +425,30 @@ class ProteinFoldingEnvironment(Environment):
         )
 
     def _is_done(self) -> bool:
-        """Check episode termination conditions."""
-        energy_done = self._energy < self._folding_threshold
-        step_done = self._state.step_count > self._task.max_steps
-        return bool(energy_done or step_done)
+        """Check episode termination conditions based on task-specific goals."""
+        # 1. Global termination: Max steps reached
+        if self._state.step_count >= self._task.max_steps:
+            return True
+
+        # 2. Task-specific goal evaluation
+        if self._task.task_id == "task_1":
+            # Goal: Reduce energy by 30% (folding_ratio=0.70)
+            # Logic: Has the energy dropped below 70% of the starting energy?
+            # We use a threshold calculated during reset: self._folding_threshold
+            return self._energy <= self._folding_threshold
+
+        elif self._task.task_id == "task_2":
+            # Goal: Form hydrophobic core (folding_ratio=0.62)
+            # Logic: Has the ratio of hydrophobic contacts reached the target?
+            contact_ratio = self._hydrophobic_contacts / max(self._max_hydrophobic_contacts, 1)
+            return contact_ratio >= self._task.folding_ratio
+
+       # TASK 3: No early termination. 
+        # The agent should keep optimizing until max_steps is reached to find the absolute minimum.
+        if self._task.task_id == "task_3":
+            return False
+
+        return False
 
     def _require_index(self, index: int | None, upper_bound: int) -> int:
         """Validate a residue index."""

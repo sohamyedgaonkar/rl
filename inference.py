@@ -18,6 +18,12 @@ import os
 import re
 import textwrap
 from typing import Any
+import sys
+from dotenv import load_dotenv
+load_dotenv() # Load your OpenAI key from .env
+
+# ADD THIS: Ensures the script can find the 'my_env' folder
+sys.path.append(os.path.dirname(__file__))
 
 from openai import OpenAI
 
@@ -31,12 +37,14 @@ except ImportError:
     from my_env.test import build_action_candidates, format_action
 
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+#API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+API_BASE_URL = os.getenv("API_BASE_URL")  
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+#API_KEY = os.getenv("HF_TOKEN")
 MODEL_NAME = os.getenv("MODEL_NAME")
-TASK_ID = os.getenv("TASK_ID", "task_1")
+TASK_ID = os.getenv("TASK_ID", "task_2")
 EPISODE_SEED = int(os.getenv("EPISODE_SEED", "7"))
-MAX_STEPS = int(os.getenv("MAX_STEPS", "30"))
+MAX_STEPS = int(os.getenv("MAX_STEPS", "3"))
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.2"))
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "250"))
 SHORTLIST_SIZE = int(os.getenv("SHORTLIST_SIZE", "8"))
@@ -84,44 +92,62 @@ def summarize_observation(observation: ProteinObservation) -> str:
     ).strip()
 
 
-def estimate_action_quality(observation: ProteinObservation) -> float:
-    """Rank candidate actions using immediate environment feedback."""
-    return (
-        float(observation.metadata.get("score", 0.0)) * 100.0
-        + float(observation.reward or 0.0)
-        - observation.energy * 0.5
-        - observation.collisions * 5.0
-        + observation.hydrophobic_contacts * 2.0
-    )
+def estimate_action_quality(observation: ProteinObservation, task_id: str) -> float:
+    """Rank candidate actions based on the specific goal of the current task."""
+    score = float(observation.metadata.get("score", 0.0))
+    reward = float(observation.reward or 0.0)
+    
+    # Task 1: Focus purely on Energy reduction
+    if task_id == "task_1":
+        return (reward * 10.0) - (observation.energy * 2.0) - (observation.collisions * 20.0)
+    
+    # Task 2: Focus on Hydrophobic Contacts
+    elif task_id == "task_2":
+        return (observation.hydrophobic_contacts * 50.0) + (reward * 5.0) - (observation.collisions * 30.0)
+    
+    # Task 3: Focus on deep optimization (Stability is key to avoid getting stuck)
+    else: 
+        # Collision penalty is highest here because one bad move ruins a long trajectory
+        return (score * 100.0) - (observation.energy * 1.0) - (observation.collisions * 100.0)
 
 
 def shortlist_candidates(
     env: ProteinFoldingEnvironment,
     candidates: list[ProteinAction],
     shortlist_size: int,
+    task_id: str, # Add this
 ) -> list[tuple[ProteinAction, ProteinObservation, float]]:
     """Evaluate all legal actions once and keep the strongest immediate moves."""
     ranked: list[tuple[ProteinAction, ProteinObservation, float]] = []
     for action in candidates:
         env_copy = copy.deepcopy(env)
         observation = env_copy.step(action)
-        ranked.append((action, observation, estimate_action_quality(observation)))
+        ranked.append((action, observation, estimate_action_quality(observation, task_id))) # Pass task_id to the quality estimator
 
     ranked.sort(key=lambda item: item[2], reverse=True)
     return ranked[: max(1, shortlist_size)]
+
+
+
 
 
 def build_user_prompt(
     observation: ProteinObservation,
     candidates: list[tuple[ProteinAction, ProteinObservation, float]],
     history: list[str],
+    task_id: str,
 ) -> str:
     """Build the user prompt sent to the model."""
+    TASK_GOALS = {
+    "task_1": "Your goal is to reach a 30 percent reduction in energy as quickly as possible.",
+    "task_2": "Your goal is to maximize hydrophobic contacts to form a core. Focus on moving hydrophobic residues together.",
+    "task_3": "This is a long-horizon optimization. Maintain stability (0 collisions) and reduce energy to the absolute minimum over the full episode."
+}
     if history:
         history_text = "\n".join(history[-5:])
     else:
         history_text = "None"
-
+    goal_statement = TASK_GOALS.get(task_id, "Lower energy and improve packing.")
     candidate_lines = []
     for index, (action, next_obs, quality) in enumerate(candidates, start=1):
         candidate_lines.append(
@@ -140,11 +166,14 @@ def build_user_prompt(
 
     return textwrap.dedent(
         f"""
-        Task: {TASK_ID}
+        Task: {task_id}
+        Mission: {goal_statement}
         Objective: lower energy, reduce collisions, and improve hydrophobic packing.
 
         Current environment summary:
         {summarize_observation(observation)}
+
+        {f"CRITICAL: You currently have {observation.collisions} collisions. Fix these immediately!" if observation.collisions > 0 else ""}
 
         Recent action history:
         {history_text}
@@ -213,73 +242,89 @@ def main() -> None:
     ensure_required_env()
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
-    env = ProteinFoldingEnvironment()
-    observation = env.reset(seed=EPISODE_SEED, task_id=TASK_ID)
-    candidates = build_action_candidates(len(observation.coordinates))
-    history: list[str] = []
+    tasks_to_evaluate = ["task_1", "task_2", "task_3"]
+    
+    for current_task in tasks_to_evaluate:
+        print(f"\n\n{'='*60}")
+        print(f"EVALUATING: {current_task.upper()}")
+        print(f"{'='*60}")
 
-    print(f"Task: {TASK_ID}")
-    print(f"Episode: {env.state.episode_id}")
-    print(f"Initial energy: {observation.energy:.3f}")
-    print(f"Initial score: {float(observation.metadata.get('score', 0.0)):.3f}")
+        # 1. Initialize Environment for the specific task
+        env = ProteinFoldingEnvironment()
+        observation = env.reset(seed=EPISODE_SEED, task_id=current_task)
+        # --- NEW: PRINT INITIAL STATE BEFORE RL STARTS ---
+        print(f"[INITIAL STATE - {current_task.upper()}]")
+        print(f"  Initial Energy:     {observation.energy:.3f}")
+        print(f"  Initial Score:      {float(observation.metadata.get('score', 0.0)):.3f}")
+        print(f"  Initial Contacts:   {observation.hydrophobic_contacts}")
+        print(f"  Initial Collisions: {observation.collisions}")
+        print(f"{'-'*30}\n")
+        # ------------------------------------------------
 
-    for step in range(1, MAX_STEPS + 1):
-        if observation.done:
-            print("Environment signalled done. Stopping early.")
-            break
+        # History tracks the trajectory to help the LLM reason
+        history: list[str] = []
+        
+        # Determine how many steps to allow based on task complexity
+        # Task 3 runs for the full duration (50+ steps) as requested
+        loop_limit = MAX_STEPS if current_task != "task_3" else max(MAX_STEPS, 5)
+    
+    
 
-        shortlisted = shortlist_candidates(env, candidates, SHORTLIST_SIZE)
-        candidate_actions = [item[0] for item in shortlisted]
-        user_prompt = build_user_prompt(observation, shortlisted, history)
+        for step in range(1, loop_limit + 1):
+            if observation.done:
+                print("Environment signalled done. Stopping early.")
+                break
+            candidates = build_action_candidates(len(observation.coordinates))
+            shortlisted = shortlist_candidates(env, candidates, SHORTLIST_SIZE, current_task)
+            candidate_actions = [item[0] for item in shortlisted]
+            # 3. Build Prompt (including history so LLM learns from steps)
+            user_prompt = build_user_prompt(observation, shortlisted, history,current_task)
 
-        try:
-            completion = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-                temperature=TEMPERATURE,
-                max_tokens=MAX_TOKENS,
-                stream=False,
+            try:
+                completion = client.chat.completions.create(
+                    model=MODEL_NAME,
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    temperature=TEMPERATURE,
+                    max_tokens=MAX_TOKENS,
+        
+                )
+                response_text = completion.choices[0].message.content or ""
+            except Exception as exc:  # noqa: BLE001
+                print(f"Model request failed ({exc}). Falling back to strongest heuristic action.")
+                response_text = ""
+
+            chosen_action = parse_action_response(response_text, candidate_actions)
+            observation = env.step(chosen_action)
+
+            reward = float(observation.reward or 0.0)
+            history_line = (
+                    f"Step {step}: {format_action(chosen_action)} | "
+                    f"Reward: {reward:+.3f} | Energy: {observation.energy:.1f}"
+                )
+            history.append(history_line)
+
+            print(f"Step {step}: {format_action(chosen_action)}")
+            print(
+                f"  reward={reward:+.3f} "
+                f"energy={observation.energy:.3f} "
+                f"score={float(observation.metadata.get('score', 0.0)):.3f} "
+                f"contacts={observation.hydrophobic_contacts} "
+                f"collisions={observation.collisions}"
             )
-            response_text = completion.choices[0].message.content or ""
-        except Exception as exc:  # noqa: BLE001
-            print(f"Model request failed ({exc}). Falling back to strongest heuristic action.")
-            response_text = ""
 
-        chosen_action = parse_action_response(response_text, candidate_actions)
-        observation = env.step(chosen_action)
+        
+    
 
-        reward = float(observation.reward or 0.0)
-        history_line = (
-            f"step={step} action={format_action(chosen_action)} "
-            f"reward={reward:+.3f} energy={observation.energy:.3f} "
-            f"score={float(observation.metadata.get('score', 0.0)):.3f}"
-        )
-        history.append(history_line)
-
-        print(f"Step {step}: {format_action(chosen_action)}")
-        print(
-            f"  reward={reward:+.3f} "
-            f"energy={observation.energy:.3f} "
-            f"score={float(observation.metadata.get('score', 0.0)):.3f} "
-            f"contacts={observation.hydrophobic_contacts} "
-            f"collisions={observation.collisions}"
-        )
-
-        if observation.done:
-            print("Episode complete.")
-            break
-    else:
-        print(f"Reached max steps ({MAX_STEPS}).")
-
-    print("Final summary:")
-    print(f"  steps={observation.step_count}")
-    print(f"  energy={observation.energy:.3f}")
-    print(f"  score={float(observation.metadata.get('score', 0.0)):.3f}")
-    print(f"  hydrophobic_contacts={observation.hydrophobic_contacts}")
-    print(f"  collisions={observation.collisions}")
+        print(f"\n--- {current_task.upper()} FINAL SUMMARY ---")
+        print(f"  Final Steps:        {observation.step_count}")
+        print(f"  Final Energy:       {observation.energy:.3f}")
+        print(f"  Final Score:        {float(observation.metadata.get('score', 0.0)):.3f}")
+        print(f"  Final Contacts:     {observation.hydrophobic_contacts}")
+        print(f"  Final Collisions:   {observation.collisions}")
+        print(f"{'='*60}")
 
 
 if __name__ == "__main__":
