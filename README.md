@@ -65,7 +65,7 @@ Protein folding is difficult because it combines:
 
 One move may improve a local angle but worsen global stability. Another move may temporarily increase disorder before enabling a better final fold. This creates a landscape full of tradeoffs, local minima, and non-obvious action sequences.
 
-![Energy Landscape](../docs/images/energy_landscape.png)
+![Energy Landscape](../main/docs/images/energy_landscape.png)
 <p align="center"><em>Conceptual energy landscape showing the search for stable low-energy states.</em></p>
 
 ---
