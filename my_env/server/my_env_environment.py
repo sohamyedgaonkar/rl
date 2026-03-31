@@ -17,8 +17,12 @@ from openenv.core.env_server.interfaces import Environment
 from openenv.core.env_server.types import State
 
 try:
-    from ..models import ProteinAction, ProteinObservation
+    from models import ProteinAction, ProteinObservation
 except ImportError:
+    # This handles the case when running via uvicorn server.app
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from models import ProteinAction, ProteinObservation
 
 

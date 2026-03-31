@@ -2,7 +2,7 @@
 
 ---
 
-## 🧪 TASK_1
+##  TASK_1
 
 ### Initial State
 - **Energy:** 7.000  
@@ -24,7 +24,7 @@
 - Contacts: `17`  
 - Collisions: `2`  
 
-⚠️ Environment signalled done. Stopping early.
+ Environment signalled done. Stopping early.
 
 ---
 
@@ -37,7 +37,7 @@
 
 ---
 
-## 🧪 TASK_2
+##  TASK_2
 
 ### Initial State
 - **Energy:** 7.000  
@@ -90,7 +90,7 @@
 
 ---
 
-## 🧪 TASK_3
+##  TASK_3
 
 ### Initial State
 - **Energy:** 7.000  
@@ -144,7 +144,7 @@
 
 **Step 5**  
 - Action: `segment_flip`  
-- Segment: `12 → 16`  
+- Segment: `12  16`  
 - Reward: `+0.528`  
 - Energy: `-21.000`  
 - Score: `0.822`  
@@ -162,7 +162,7 @@
 
 ---
 
-## ✅ Overall Observation
+##  Overall Observation
 
 - The agent consistently **reduces energy effectively**
 - **Hydrophobic clustering improves over time**

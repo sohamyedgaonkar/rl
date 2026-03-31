@@ -13,12 +13,14 @@ except Exception as e:  # pragma: no cover
         "openenv is required for the web interface. Install dependencies with '\n    uv sync\n'"
     ) from e
 
-try:
-    from ..models import ProteinAction, ProteinObservation
-    from .my_env_environment import ProteinFoldingEnvironment
-except ModuleNotFoundError:
-    from models import ProteinAction, ProteinObservation
-    from server.my_env_environment import ProteinFoldingEnvironment
+import sys
+import os
+
+# Add the current directory to sys.path so it can find models.py
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from models import ProteinAction, ProteinObservation
+from server.my_env_environment import ProteinFoldingEnvironment
 
 
 app = create_app(
