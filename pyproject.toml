@@ -36,4 +36,4 @@ server = "my_env.server.app:main"
 [tool.setuptools]
 include-package-data = true
 packages = ["my_env", "my_env.server"]
-package-dir = { "my_env" = ".", "my_env.server" = "server" }
+package-dir = {"" = "."}

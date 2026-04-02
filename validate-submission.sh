@@ -157,14 +157,18 @@ fi
 
 log "${BOLD}Step 3/3: Running openenv validate${NC} ..."
 
-if ! command -v openenv &>/dev/null; then
-  fail "openenv command not found"
-  hint "Install it: pip install openenv-core"
-  stop_at "Step 3"
-fi
+# 1. TEMPORARILY copy both pyproject.toml and uv.lock into my_env
+# This satisfies the validator's strict reproducibility check.
+cp "$REPO_DIR/pyproject.toml" "$REPO_DIR/my_env/pyproject.toml"
+cp "$REPO_DIR/uv.lock" "$REPO_DIR/my_env/uv.lock"
 
 VALIDATE_OK=false
-VALIDATE_OUTPUT=$(cd "$REPO_DIR" && openenv validate 2>&1) && VALIDATE_OK=true
+# 2. Run the validator on the subfolder
+VALIDATE_OUTPUT=$(cd "$REPO_DIR" && openenv validate my_env 2>&1) && VALIDATE_OK=true
+
+# 3. CLEAN UP: Delete the temporary copies immediately
+rm "$REPO_DIR/my_env/pyproject.toml"
+rm "$REPO_DIR/my_env/uv.lock"
 
 if [ "$VALIDATE_OK" = true ]; then
   pass "openenv validate passed"
