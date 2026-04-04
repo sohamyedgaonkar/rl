@@ -252,17 +252,13 @@ def main() -> None:
         # 1. Initialize Environment for the specific task
         env = ProteinFoldingEnvironment()
         observation = env.reset(seed=EPISODE_SEED, task_id=current_task)
-        # --- NEW: PRINT INITIAL STATE BEFORE RL STARTS ---
-        print(f"[INITIAL STATE - {current_task.upper()}]")
-        print(f"  Initial Energy:     {observation.energy:.3f}")
-        print(f"  Initial Score:      {float(observation.metadata.get('score', 0.0)):.3f}")
-        print(f"  Initial Contacts:   {observation.hydrophobic_contacts}")
-        print(f"  Initial Collisions: {observation.collisions}")
-        print(f"{'-'*30}\n")
-        # ------------------------------------------------
+        print(f"[START] task={current_task} env=protein_folding model={MODEL_NAME}", flush=True)
+
+        
 
         # History tracks the trajectory to help the LLM reason
         history: list[str] = []
+        rewards: list[float] = []
         
         # Determine how many steps to allow based on task complexity
         # Task 3 runs for the full duration (50+ steps) as requested
@@ -300,31 +296,25 @@ def main() -> None:
             observation = env.step(chosen_action)
 
             reward = float(observation.reward or 0.0)
-            history_line = (
-                    f"Step {step}: {format_action(chosen_action)} | "
-                    f"Reward: {reward:+.3f} | Energy: {observation.energy:.1f}"
-                )
-            history.append(history_line)
+            rewards.append(reward)
+            action_desc = format_action(chosen_action).replace(" ", "_")
+            done_val = str(observation.done).lower()    
+            print(f"[STEP] step={step} action={action_desc} reward={reward:.2f} done={done_val} error=null", flush=True)
+            history.append(f"Step {step}: {format_action(chosen_action)} -> reward {reward:.2f}")
 
-            print(f"Step {step}: {format_action(chosen_action)}")
-            print(
-                f"  reward={reward:+.3f} "
-                f"energy={observation.energy:.3f} "
-                f"score={float(observation.metadata.get('score', 0.0)):.3f} "
-                f"contacts={observation.hydrophobic_contacts} "
-                f"collisions={observation.collisions}"
-            )
+            
 
         
     
 
-        print(f"\n--- {current_task.upper()} FINAL SUMMARY ---")
-        print(f"  Final Steps:        {observation.step_count}")
-        print(f"  Final Energy:       {observation.energy:.3f}")
-        print(f"  Final Score:        {float(observation.metadata.get('score', 0.0)):.3f}")
-        print(f"  Final Contacts:     {observation.hydrophobic_contacts}")
-        print(f"  Final Collisions:   {observation.collisions}")
-        print(f"{'='*60}")
+        # Final Score calculation
+        final_score = float(observation.metadata.get('score', 0.0))
+        success = str(final_score >= 0.7).lower() # Example threshold
+        
+        # [END] line is MANDATORY
+        # Format: [END] success=<bool> steps=<n> score=<0.000> rewards=<r1,r2,rn>
+        rewards_str = ",".join([f"{r:.2f}" for r in rewards])
+        print(f"[END] success={success} steps={len(rewards)} score={final_score:.3f} rewards={rewards_str}", flush=True)
 
 
 if __name__ == "__main__":
