@@ -266,7 +266,7 @@ def main() -> None:
         
         # Determine how many steps to allow based on task complexity
         # Task 3 runs for the full duration (50+ steps) as requested
-        loop_limit = MAX_STEPS if current_task != "task_3" else max(MAX_STEPS, 5)
+        loop_limit = MAX_STEPS if current_task != "task_3" else max(MAX_STEPS, 15)
     
     
 
