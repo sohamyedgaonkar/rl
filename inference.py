@@ -67,16 +67,39 @@ class ProteinFoldingEnvClient(EnvClient[ProteinAction, ProteinObservation, Any])
         # 1. Extract the actual observation data from the nested key
         # If 'observation' isn't a key, it falls back to the payload itself
         obs_data = payload.get("observation", payload)
+        if not isinstance(obs_data, dict):
+            obs_data = {}
+
+        top_level_reward = payload.get("reward")
+        top_level_done = payload.get("done")
+
+        # Some OpenEnv servers return reward/done top-level only. Mirror them into
+        # observation fields when missing so downstream logic is consistent.
+        if "reward" not in obs_data and top_level_reward is not None:
+            obs_data["reward"] = top_level_reward
+        if "done" not in obs_data and top_level_done is not None:
+            obs_data["done"] = top_level_done
         
         # 2. Reconstruct the Observation model
         # We use .get() for reward and done as they are part of the StepResult, 
         # not necessarily the Observation model itself.
         observation = ProteinObservation(**obs_data)
         
+        parsed_reward = (
+            top_level_reward
+            if top_level_reward is not None
+            else getattr(observation, "reward", 0.0)
+        )
+        parsed_done = (
+            top_level_done
+            if top_level_done is not None
+            else getattr(observation, "done", False)
+        )
+
         return StepResult(
             observation=observation,
-            reward=payload.get("reward", 0.0),
-            done=payload.get("done", False),
+            reward=float(parsed_reward or 0.0),
+            done=bool(parsed_done),
         )
 
     def _parse_state(self, payload: dict) -> Any:
@@ -139,6 +162,33 @@ def estimate_action_quality(observation: ProteinObservation, task_id: str) -> fl
     else: 
         # Collision penalty is highest here because one bad move ruins a long trajectory
         return (score * 100.0) - (observation.energy * 1.0) - (observation.collisions * 100.0)
+
+
+def estimate_score_from_observation(
+    observation: ProteinObservation,
+    initial_energy: float,
+) -> float:
+    """Reconstruct normalized score when metadata is missing from API payloads."""
+    length = max(1, len(observation.coordinates))
+    hydrophobic_count = (length + 1) // 2
+    max_hydrophobic_contacts = max(1, hydrophobic_count * (hydrophobic_count - 1) // 2)
+
+    denominator = max(abs(initial_energy), 1e-6)
+    energy_reduction_ratio = float(
+        np.clip((initial_energy - observation.energy) / denominator, 0.0, 1.0)
+    )
+    hydrophobic_contact_ratio = float(
+        np.clip(observation.hydrophobic_contacts / max_hydrophobic_contacts, 0.0, 1.0)
+    )
+    stability_score = 1.0 if observation.collisions == 0 else float(1.0 / (1 + observation.collisions))
+
+    return float(
+        np.clip(
+            (energy_reduction_ratio + hydrophobic_contact_ratio + stability_score) / 3.0,
+            0.0,
+            1.0,
+        )
+    )
 
 
 def shortlist_candidates(
@@ -294,6 +344,8 @@ async def main() -> None:
             
             result = await env.reset(seed=EPISODE_SEED, task_id=current_task)
             observation = result.observation
+            episode_done = bool(result.done if result.done is not None else getattr(observation, "done", False))
+            initial_energy = float(observation.energy)
             print(f"[START] task={current_task} env=protein_folding model={MODEL_NAME}", flush=True)
 
             
@@ -309,7 +361,7 @@ async def main() -> None:
         
 
             for step in range(1, loop_limit + 1):
-                if observation.done:
+                if episode_done:
                     print("Environment signalled done. Stopping early.")
                     break
                 candidates = build_action_candidates(len(observation.coordinates))
@@ -326,7 +378,7 @@ async def main() -> None:
                             {"role": "user", "content": user_prompt},
                         ],
                         temperature=TEMPERATURE,
-                        max_tokens=MAX_TOKENS,
+                        max_completion_tokens=MAX_TOKENS,
             
                     )
                     response_text = completion.choices[0].message.content or ""
@@ -337,12 +389,21 @@ async def main() -> None:
                 chosen_action = parse_action_response(response_text, candidate_actions)
                 result = await env.step(chosen_action)
                 observation = result.observation
+                episode_done = bool(result.done if result.done is not None else getattr(observation, "done", False))
 
-                reward = float(observation.reward or 0.0)
+                reward = float(
+                    result.reward
+                    if result.reward is not None
+                    else getattr(observation, "reward", 0.0)
+                )
                 rewards.append(reward)
                 action_desc = format_action(chosen_action).replace(" ", "_")
-                done_val = str(observation.done).lower()    
-                print(f"[STEP] step={step} action={action_desc} reward={reward:.2f} done={done_val} error=null", flush=True)
+                done_val = str(episode_done).lower()
+                energy_val = float(getattr(observation, "energy", 0.0))
+                print(
+                    f"[STEP] step={step} action={action_desc} reward={reward:.2f} energy={energy_val:.2f} done={done_val} error=null",
+                    flush=True,
+                )
                 history.append(f"Step {step}: {format_action(chosen_action)} -> reward {reward:.2f}")
 
                 
@@ -351,7 +412,12 @@ async def main() -> None:
         
 
             # Final Score calculation
-            final_score = float(observation.metadata.get('score', 0.0))
+            metadata_score = float(getattr(observation, "metadata", {}).get("score", 0.0) or 0.0)
+            final_score = (
+                metadata_score
+                if metadata_score > 0.0
+                else estimate_score_from_observation(observation, initial_energy)
+            )
             success = str(final_score >= 0.7).lower() # Example threshold
             
             # [END] line is MANDATORY
