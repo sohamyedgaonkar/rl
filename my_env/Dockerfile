@@ -48,10 +48,18 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     fi
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    if [ -f uv.lock ]; then \
-        uv sync --frozen --no-editable; \
+    if [ -d my_env ]; then \
+        if [ -f uv.lock ]; then \
+            uv sync --frozen --no-editable; \
+        else \
+            uv sync --no-editable; \
+        fi; \
     else \
-        uv sync --no-editable; \
+        if [ -f uv.lock ]; then \
+            uv sync --frozen --no-install-project --no-editable; \
+        else \
+            uv sync --no-install-project --no-editable; \
+        fi; \
     fi
 
 # Final runtime stage
@@ -76,5 +84,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD python -c "import sys, urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2); sys.exit(0)" || exit 1
 
 # Run the FastAPI server
-# The module path is constructed to work with the /app/env structure
-CMD ["uvicorn", "my_env.server.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Supports both repository-root layout (my_env.server.app) and standalone layout (server.app).
+CMD ["sh", "-c", "if [ -d /app/env/my_env ]; then exec uvicorn my_env.server.app:app --host 0.0.0.0 --port 8000; else exec uvicorn server.app:app --host 0.0.0.0 --port 8000; fi"]
