@@ -22,7 +22,7 @@ RUN apt-get update && \
 
 # Build argument to control whether we're building standalone or in-repo
 ARG BUILD_MODE=in-repo
-ARG ENV_NAME=my_env
+ARG ENV_NAME=xero
 
 # Copy environment code (always at root of build context)
 COPY . /app/env
@@ -48,7 +48,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     fi
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    if [ -d my_env ]; then \
+    if [ -d xero ]; then \
         if [ -f uv.lock ]; then \
             uv sync --frozen --no-editable; \
         else \
@@ -84,5 +84,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD python -c "import sys, urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2); sys.exit(0)" || exit 1
 
 # Run the FastAPI server
-# Supports both repository-root layout (my_env.server.app) and standalone layout (server.app).
-CMD ["sh", "-c", "if [ -d /app/env/my_env ]; then exec uvicorn my_env.server.app:app --host 0.0.0.0 --port 8000; else exec uvicorn server.app:app --host 0.0.0.0 --port 8000; fi"]
+# Supports both repository-root layout (xero.server.app) and standalone layout (server.app).
+CMD ["sh", "-c", "if [ -d /app/env/xero ]; then exec uvicorn xero.server.app:app --host 0.0.0.0 --port 8000; else exec uvicorn server.app:app --host 0.0.0.0 --port 8000; fi"]

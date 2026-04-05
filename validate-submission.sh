@@ -157,18 +157,18 @@ fi
 
 log "${BOLD}Step 3/3: Running openenv validate${NC} ..."
 
-# 1. TEMPORARILY copy both pyproject.toml and uv.lock into my_env
+# 1. TEMPORARILY copy both pyproject.toml and uv.lock into xero
 # This satisfies the validator's strict reproducibility check.
-cp "$REPO_DIR/pyproject.toml" "$REPO_DIR/my_env/pyproject.toml"
-cp "$REPO_DIR/uv.lock" "$REPO_DIR/my_env/uv.lock"
+cp "$REPO_DIR/pyproject.toml" "$REPO_DIR/xero/pyproject.toml"
+cp "$REPO_DIR/uv.lock" "$REPO_DIR/xero/uv.lock"
 
 VALIDATE_OK=false
 # 2. Run the validator on the subfolder
-VALIDATE_OUTPUT=$(cd "$REPO_DIR" && openenv validate my_env 2>&1) && VALIDATE_OK=true
+VALIDATE_OUTPUT=$(cd "$REPO_DIR" && openenv validate xero 2>&1) && VALIDATE_OK=true
 
 # 3. CLEAN UP: Delete the temporary copies immediately
-rm "$REPO_DIR/my_env/pyproject.toml"
-rm "$REPO_DIR/my_env/uv.lock"
+rm "$REPO_DIR/xero/pyproject.toml"
+rm "$REPO_DIR/xero/uv.lock"
 
 if [ "$VALIDATE_OK" = true ]; then
   pass "openenv validate passed"

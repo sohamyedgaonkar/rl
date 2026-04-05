@@ -20,10 +20,10 @@ from pathlib import Path
 
 try:
     from models import ProteinAction, ProteinObservation
-    from server.my_env_environment import ProteinFoldingEnvironment
+    from server.xero_environment import ProteinFoldingEnvironment
 except ImportError:
-    from my_env.models import ProteinAction, ProteinObservation
-    from my_env.server.my_env_environment import ProteinFoldingEnvironment
+    from xero.models import ProteinAction, ProteinObservation
+    from xero.server.xero_environment import ProteinFoldingEnvironment
 
 
 @dataclass
@@ -380,7 +380,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--log-file",
-        default="rl/my_env/logs/protein_folding_run.log",
+        default="rl/xero/logs/protein_folding_run.log",
         help="Optional path for a human-readable log file",
     )
     parser.add_argument(

@@ -20,14 +20,14 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from models import ProteinAction, ProteinObservation
-from server.my_env_environment import ProteinFoldingEnvironment
+from server.xero_environment import ProteinFoldingEnvironment
 
 
 app = create_app(
     ProteinFoldingEnvironment,
     ProteinAction,
     ProteinObservation,
-    env_name="my_env",
+    env_name="xero",
     max_concurrent_envs=4,
 )
 

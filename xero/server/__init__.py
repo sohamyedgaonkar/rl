@@ -6,6 +6,6 @@
 
 """Protein folding environment server exports."""
 
-from .my_env_environment import MyEnvironment, ProteinFoldingEnvironment
+from .xero_environment import MyEnvironment, ProteinFoldingEnvironment
 
 __all__ = ["ProteinFoldingEnvironment", "MyEnvironment"]

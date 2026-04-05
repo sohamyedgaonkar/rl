@@ -15,7 +15,7 @@ It improves on the earlier REINFORCE baseline by adding:
 Examples:
     python train_policy.py --task task_1 --episodes 400
     python train_policy.py --task task_2 --episodes 600 --eval-every 20
-    python train_policy.py --task task_1 --mode eval --model-file rl/my_env/models/task1_best_policy.npz
+    python train_policy.py --task task_1 --mode eval --model-file rl/xero/models/task1_best_policy.npz
 """
 
 from __future__ import annotations
@@ -36,12 +36,12 @@ warnings.filterwarnings(
 
 try:
     from models import ProteinAction, ProteinObservation
-    from server.my_env_environment import ProteinFoldingEnvironment
+    from server.xero_environment import ProteinFoldingEnvironment
     from test import build_action_candidates, format_action
 except ImportError:
-    from my_env.models import ProteinAction, ProteinObservation
-    from my_env.server.my_env_environment import ProteinFoldingEnvironment
-    from my_env.test import build_action_candidates, format_action
+    from xero.models import ProteinAction, ProteinObservation
+    from xero.server.xero_environment import ProteinFoldingEnvironment
+    from xero.test import build_action_candidates, format_action
 
 
 @dataclass
@@ -541,17 +541,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument(
         "--model-file",
-        default="rl/my_env/models/protein_policy_final.npz",
+        default="rl/xero/models/protein_policy_final.npz",
         help="Path used to save or load the final policy parameters",
     )
     parser.add_argument(
         "--best-model-file",
-        default="rl/my_env/models/protein_policy_best.npz",
+        default="rl/xero/models/protein_policy_best.npz",
         help="Path used to save the best evaluation checkpoint",
     )
     parser.add_argument(
         "--metrics-file",
-        default="rl/my_env/logs/training_metrics.csv",
+        default="rl/xero/logs/training_metrics.csv",
         help="CSV file for evaluation snapshots during training",
     )
     return parser

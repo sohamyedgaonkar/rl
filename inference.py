@@ -30,12 +30,12 @@ import numpy as np
 
 try:
     from models import ProteinAction, ProteinObservation
-    from server.my_env_environment import ProteinFoldingEnvironment
+    from server.xero_environment import ProteinFoldingEnvironment
     from test import build_action_candidates, format_action
 except ImportError:
-    from my_env.models import ProteinAction, ProteinObservation
-    from my_env.server.my_env_environment import ProteinFoldingEnvironment
-    from my_env.test import build_action_candidates, format_action
+    from xero.models import ProteinAction, ProteinObservation
+    from xero.server.xero_environment import ProteinFoldingEnvironment
+    from xero.test import build_action_candidates, format_action
 
 
 #API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")

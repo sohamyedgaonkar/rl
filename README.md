@@ -99,7 +99,7 @@ The environment is implemented with OpenEnv and simulates a simplified protein c
 
 ### Tasks
 
-Three task settings are defined in [openenv.yaml](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/my_env/openenv.yaml):
+Three task settings are defined in [openenv.yaml](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/xero/openenv.yaml):
 
 - `task_1`: protein length `8`, goal is to reduce energy by `30%`
 - `task_2`: protein length `12`, goal is to form a hydrophobic core
@@ -118,7 +118,7 @@ Each observation includes:
 - `collisions`: steric clashes
 - `done`: episode termination flag
 
-These fields are defined in [models.py](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/my_env/models.py).
+These fields are defined in [models.py](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/xero/models.py).
 
 ### Action Space
 
@@ -187,7 +187,7 @@ Unphysical torsion values are penalized.
 E_angle = penalty when torsion angles exceed allowed range
 ```
 
-All of this logic lives in [my_env_environment.py](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/my_env/server/my_env_environment.py).
+All of this logic lives in [xero_environment.py](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/xero/server/xero_environment.py).
 
 ---
 
@@ -256,11 +256,11 @@ The environment model simulates the protein chain and updates:
 - total energy
 
 Core file:
-- [my_env_environment.py](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/my_env/server/my_env_environment.py)
+- [xero_environment.py](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/xero/server/xero_environment.py)
 
 ### 2. Search-Based Decision Model
 
-The script [test.py](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/my_env/test.py) performs short-horizon search over legal actions and chooses strong moves greedily. It is useful for:
+The script [test.py](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/xero/test.py) performs short-horizon search over legal actions and chooses strong moves greedily. It is useful for:
 
 - debugging the environment
 - generating interpretable rollouts
@@ -268,7 +268,7 @@ The script [test.py](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/my_env/test
 
 ### 3. Trained RL Policy
 
-The script [train_policy.py](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/my_env/train_policy.py) trains an actor-critic style policy using:
+The script [train_policy.py](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/xero/train_policy.py) trains an actor-critic style policy using:
 
 - handcrafted state features
 - a linear softmax actor
@@ -287,37 +287,37 @@ This is the learned decision-making component of the project.
 Use the search harness to inspect strong candidate actions:
 
 ```bash
-python rl/my_env/test.py --task task_1
+python rl/xero/test.py --task task_1
 ```
 
 ### Train the Policy
 
 ```bash
-python rl/my_env/train_policy.py --task task_1 --episodes 400
+python rl/xero/train_policy.py --task task_1 --episodes 400
 ```
 
 ### Evaluate the Best Learned Policy
 
 ```bash
-python rl/my_env/train_policy.py --mode eval --task task_1 --model-file rl/my_env/models/protein_policy_best.npz
+python rl/xero/train_policy.py --mode eval --task task_1 --model-file rl/xero/models/protein_policy_best.npz
 ```
 
 ### Logs and Metrics
 
 Training metrics are written to:
 
-- [training_metrics.csv](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/my_env/logs/training_metrics.csv)
+- [training_metrics.csv](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/xero/logs/training_metrics.csv)
 
 Search and rollout logs are written to:
 
-- [protein_folding_run.log](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/my_env/logs/protein_folding_run.log)
+- [protein_folding_run.log](/c:/Users/DELL/Desktop/tally/meta/Biological/rl/xero/logs/protein_folding_run.log)
 
 ---
 
 ## Project Structure
 
 ```text
-my_env/
+xero/
 |-- README.md
 |-- openenv.yaml
 |-- models.py
@@ -332,7 +332,7 @@ my_env/
 |   `-- protein_policy_final.npz
 `-- server/
     |-- app.py
-    `-- my_env_environment.py
+    `-- xero_environment.py
 ```
 
 ---
